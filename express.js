@@ -81,6 +81,38 @@ app.post('/signUpData', (req, res) => {
     })
 });
 
+app.post("/userLogIn", (req, res) => {
+    console.log(req.body)
+    client.query(`select * from users where username = '${req.body.username}'`, (err, result) => {
+        if (err) {
+            console.log(err);
+            res.json({
+                message: `Log in failed.`
+            })
+        } else if (!result.rows[0]) {
+            res.json({
+                message: `Log in failed.`
+            })
+        } else {
+            bcrypt.compare(req.body.password, result.rows[0].password, function (err, resolve) {
+                if (resolve) {
+                    var token = jwt.sign(req.body.username, ('Secret'), {
+                    });
+                    res.json({
+                        message: `Login successful!`,
+                        token,
+                        username: result.rows[0].username,
+                    });
+                } else {
+                    res.json({
+                        message: `Login failed.`
+                    });
+                }
+            })
+        }
+    });
+});
+
 // app.post('/changePassword', (req, res) => {
 //     db.collection('users').find({ username: req.body.username }).toArray((err, user) => {
 //         if (user.length) {
@@ -110,38 +142,6 @@ app.post('/signUpData', (req, res) => {
 //             });
 //         } else {
 //             res.json('Error: Please log out and back in')
-//         }
-//     })
-// });
-
-// app.post("/userLogIn", (req, res) => {
-//     db.collection("users").find({ username: req.body.username }).toArray((err, user) => {
-//         if (!user.length) {
-//             res.json({
-//                 message: `Login failed!`
-//             });
-//         } else if (err) {
-//             res.json({
-//                 message: "Login failed!"
-//             });
-//         } else {
-//             bcrypt.compare(req.body.password, user[0].password, function (err, resolve) {
-//                 if (resolve === true) {
-//                     var token = jwt.sign(req.body.username, ('Secret'), {
-//                     });
-//                     res.json({
-//                         message: "Login successful!",
-//                         myToken: token,
-//                         user: user[0],
-//                         item: user
-//                     });
-//                     console.log(`Sign in successful from ${req.body.username}`)
-//                 } else if (resolve === false) {
-//                     res.json({
-//                         message: "Login failed!",
-//                     })
-//                 }
-//             });
 //         }
 //     })
 // });
