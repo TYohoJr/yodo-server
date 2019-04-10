@@ -1,4 +1,4 @@
-const express =  require('express');
+const express = require('express');
 const path = require('path');
 const bodyparser = require('body-parser');
 const bcrypt = require('bcrypt');
@@ -51,40 +51,35 @@ app.get('/', function (req, res) {
     res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// app.post('/signUpData', (req, res) => {
-//     if (req.body.username.length && req.body.password.length) {
-//         db.collection('users').find({ username: req.body.username }).toArray((err, user) => {
-//             if (user.length) {
-//                 res.json('This username already exists')
-//             } else {
-//                 bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
-//                     db.collection('users').save({
-//                         username: req.body.username,
-//                         password: hash,
-//                         staticDots: [],
-//                         pursuits: [],
-//                         saccades: [],
-//                         combination: [],
-//                         randomSaccades: [],
-//                         antiSaccades: [],
-//                         opk: [],
-//                         dateCreated: req.body.dateCreated
-//                     }, (err, result) => {
-//                         if (err) {
-//                             res.json("Failed")
-//                             return console.log(err);
-//                         } else {
-//                             res.json("Sign Up Successful")
-//                             console.log('saved to database');
-//                         }
-//                     });
-//                 });
-//             }
-//         })
-//     } else {
-//         res.json('Error: username or password can\'t be blank')
-//     }
-// });
+app.post('/signUpData', (req, res) => {
+    client.query(`select * from users where username = '${req.body.username}'`, (err, duplicateResult) => {
+        if (err) {
+            console.log(err);
+            res.json({
+                message: `Sign up failed:\n${err}`
+            });
+        } else if (duplicateResult.rows[0]) {
+            res.json({
+                message: `The username ${req.body.username} already exists`
+            });
+        } else {
+            bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
+                client.query(`insert into users (username, password, date_created) values ('${req.body.username}', '${hash}', '${req.body.dateCreated}') returning *`, (err, result) => {
+                    if (err) {
+                        console.log(err);
+                        res.json({
+                            message: `Sign up failed:\n${err}`
+                        });
+                    } else {
+                        res.json({
+                            message: "Sign Up Successful!"
+                        });
+                    }
+                })
+            })
+        }
+    })
+});
 
 // app.post('/changePassword', (req, res) => {
 //     db.collection('users').find({ username: req.body.username }).toArray((err, user) => {
