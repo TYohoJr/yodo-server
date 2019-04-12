@@ -82,7 +82,6 @@ app.post('/signUpData', (req, res) => {
 });
 
 app.post("/userLogIn", (req, res) => {
-    console.log(req.body)
     client.query(`select * from users where username = '${req.body.username}'`, (err, result) => {
         if (err) {
             console.log(err);
