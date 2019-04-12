@@ -95,7 +95,7 @@ app.post("/userLogIn", (req, res) => {
         } else {
             bcrypt.compare(req.body.password, result.rows[0].password, function (err, resolve) {
                 if (resolve) {
-                    var token = jwt.sign(req.body.username, ('Secret'), {
+                    var token = jwt.sign(req.body.username, process.env.JWT_SECRET, {
                     });
                     res.json({
                         message: `Login successful!`,
