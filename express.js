@@ -33,9 +33,11 @@ client.connect((err) => {
 function verifyToken(req, res, next) {
     var token = req.body.token;
     if (token) {
-        jwt.verify(token, "Secret", (err, decode) => {
+        jwt.verify(token, process.env.JWT_SECRET, (err, decode) => {
             if (err) {
-                res.send("Wrong token")
+                res.json({
+                    message: "Wrong token"
+                })
             } else {
                 res.locals.decode = decode
                 next();
@@ -111,6 +113,26 @@ app.post("/userLogIn", (req, res) => {
         }
     });
 });
+
+app.post("/checkReAuth", verifyToken, (req, res) => {
+    client.query(`select * from users where username = '${req.body.username}'`, (err, result) => {
+        if (err) {
+            console.log(err);
+            res.json({
+                message: `Log in failed.`
+            })
+        } else if (!result.rows[0]) {
+            res.json({
+                message: `Log in failed.`
+            })
+        } else {
+            res.json({
+                message: `Login successful!`,
+                username: result.rows[0].username,
+            });
+        }
+    });
+})
 
 // app.post('/changePassword', (req, res) => {
 //     db.collection('users').find({ username: req.body.username }).toArray((err, user) => {
