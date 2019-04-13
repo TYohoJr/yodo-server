@@ -5,9 +5,10 @@ const bcrypt = require('bcrypt');
 const saltRounds = 10;
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const assert = require('assert');
 const pg = require('pg');
 const morgan = require('morgan');
+var multer = require('multer');
+var cors = require('cors');
 
 let app = express();
 
@@ -15,9 +16,19 @@ app.use(express.static(path.join(__dirname, "build")));
 app.use(bodyparser.json({ type: 'application/json' }));
 app.use(bodyparser.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+app.use(cors());
 
 var conString = process.env.ELEPHANTSQL_URL
 var client = new pg.Client(conString);
+var storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'files');
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' +file.originalname);
+    }
+})
+var upload = multer({ storage: storage }).single('file')
 
 client.connect((err) => {
     if (err) {
@@ -133,6 +144,17 @@ app.post("/checkReAuth", verifyToken, (req, res) => {
         }
     });
 })
+
+app.post('/supportUpload', (req, res) => {
+    upload(req, res, function (err) {
+        if(err instanceof multer.MulterError) {
+            return res.status(500).json(err);
+        } else if (err) {
+            return res.status(500).json(err);
+        }
+        return res.status(200).send(req.body.fileData);
+    })
+});
 
 // app.post('/changePassword', (req, res) => {
 //     db.collection('users').find({ username: req.body.username }).toArray((err, user) => {
