@@ -10,6 +10,7 @@ const morgan = require('morgan');
 // var multer = require('multer');
 var cors = require('cors');
 const nodemailer = require('nodemailer');
+const validator = require('email-validator');
 
 let app = express();
 
@@ -44,22 +45,23 @@ async function supportEmailer(data) {
         }
     });
     let info = await transporter.sendMail({
-        from: '"YoDoSupport <YoDoSupport@Gmail.com',
+        from: '"YoDoSupport <tyohojr@gmail.com',
         to: `${data.userData.email}`,
         subject: "Support Confirmation",
         text: `This is a confirmation of the support ticket you requested on ${data.userData.date}.
         If a response is needed we will try to email you back within 72 hours. Thank you for using YoDo!\n
-        Here is a copy of your support ticket for your reference:\nName: ${data.userData.name}\n
-        Email: ${data.userData.email}\n
+        Here is a copy of your support ticket for your reference:\n
         Date: ${data.userData.date}\n
+        Email: ${data.userData.email}\n
         Details: ${data.userData.details}`,
         html: `<p>This is a confirmation of the support ticket you requested on ${data.userData.date}.
         If a response is needed we will try to email you back within 72 hours. Thank you for using YoDo!<br/><br/>
         Here is a copy of your support ticket for your reference:<br/><br/>
-        <b>Name:</b> ${data.userData.name}<br/>
-        <b>Email:</b> ${data.userData.email}<br/>
         <b>Date:</b> ${data.userData.date}<br/>
+        <b>Email:</b> ${data.userData.email}<br/>
         <b>Details:</b> ${data.userData.details}</p>`
+    }).catch((err) => {
+        console.log(err);
     });
 }
 
@@ -79,7 +81,7 @@ function verifyToken(req, res, next) {
     if (token) {
         jwt.verify(token, process.env.JWT_SECRET, (err, decode) => {
             if (err) {
-                res.json({
+                return res.json({
                     message: "Wrong token"
                 })
             } else {
@@ -98,26 +100,31 @@ app.get('/', function (req, res) {
 });
 
 app.post('/signUpData', (req, res) => {
+    if(!validator.validate(req.body.username)) {
+        return res.json({
+            message: "Invalid Email"
+        });
+    }
     client.query(`select * from users where username = '${req.body.username}'`, (err, duplicateResult) => {
         if (err) {
             console.log(err);
-            res.json({
+            return res.json({
                 message: `Sign up failed:\n${err}`
             });
         } else if (duplicateResult.rows[0]) {
-            res.json({
-                message: `The username ${req.body.username} already exists`
+            return res.json({
+                message: `The email ${req.body.username} is already in use`
             });
         } else {
             bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
                 client.query(`insert into users (username, password, date_created) values ('${req.body.username}', '${hash}', '${req.body.dateCreated}') returning *`, (err, result) => {
                     if (err) {
                         console.log(err);
-                        res.json({
+                        return res.json({
                             message: `Sign up failed:\n${err}`
                         });
                     } else {
-                        res.json({
+                        return res.json({
                             message: "Sign Up Successful!"
                         });
                     }
@@ -131,11 +138,11 @@ app.post("/userLogIn", (req, res) => {
     client.query(`select * from users where username = '${req.body.username}'`, (err, result) => {
         if (err) {
             console.log(err);
-            res.json({
+            return res.json({
                 message: `Log in failed.`
             })
         } else if (!result.rows[0]) {
-            res.json({
+            return res.json({
                 message: `Log in failed.`
             })
         } else {
@@ -143,13 +150,13 @@ app.post("/userLogIn", (req, res) => {
                 if (resolve) {
                     var token = jwt.sign(req.body.username, process.env.JWT_SECRET, {
                     });
-                    res.json({
+                    return res.json({
                         message: `Login successful!`,
                         token,
                         username: result.rows[0].username,
                     });
                 } else {
-                    res.json({
+                    return res.json({
                         message: `Login failed.`
                     });
                 }
@@ -162,15 +169,15 @@ app.post("/checkReAuth", verifyToken, (req, res) => {
     client.query(`select * from users where username = '${req.body.username}'`, (err, result) => {
         if (err) {
             console.log(err);
-            res.json({
+            return res.json({
                 message: `Log in failed.`
             })
         } else if (!result.rows[0]) {
-            res.json({
+            return res.json({
                 message: `Log in failed.`
             })
         } else {
-            res.json({
+            return res.json({
                 message: `Login successful!`,
                 username: result.rows[0].username,
             });
@@ -180,7 +187,7 @@ app.post("/checkReAuth", verifyToken, (req, res) => {
 
 app.post('/supportUpload', (req, res) => {
     supportEmailer(req.body);
-    res.json({
+    return res.json({
         message: 'sent'
     });
     // upload(req, res, function (err) {
