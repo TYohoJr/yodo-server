@@ -7,8 +7,9 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const pg = require('pg');
 const morgan = require('morgan');
-var multer = require('multer');
+// var multer = require('multer');
 var cors = require('cors');
+const nodemailer = require('nodemailer');
 
 let app = express();
 
@@ -20,15 +21,47 @@ app.use(cors());
 
 var conString = process.env.ELEPHANTSQL_URL
 var client = new pg.Client(conString);
-var storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'files');
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' +file.originalname);
-    }
-})
-var upload = multer({ storage: storage }).single('file')
+// var storage = multer.diskStorage({
+//     destination: function (req, file, cb) {
+//         cb(null, 'files');
+//     },
+//     filename: function (req, file, cb) {
+//         cb(null, Date.now() + '-' +file.originalname);
+//     }
+// })
+// var upload = multer({ storage: storage }).single('file')
+
+async function supportEmailer(data) {
+    let transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            type: 'OAuth2',
+            user: process.env.GMAIL_USER,
+            clientId: process.env.CLIENT_ID,
+            clientSecret: process.env.CLIENT_SECRET,
+            refreshToken: process.env.REFRESH_TOKEN,
+            accessToken: process.env.ACCESS_TOKEN
+        }
+    });
+    let info = await transporter.sendMail({
+        from: '"YoDoSupport <YoDoSupport@Gmail.com',
+        to: `${data.userData.email}`,
+        subject: "Support Confirmation",
+        text: `This is a confirmation of the support ticket you requested on ${data.userData.date}.
+        If a response is needed we will try to email you back within 72 hours. Thank you for using YoDo!\n
+        Here is a copy of your support ticket for your reference:\nName: ${data.userData.name}\n
+        Email: ${data.userData.email}\n
+        Date: ${data.userData.date}\n
+        Details: ${data.userData.details}`,
+        html: `<p>This is a confirmation of the support ticket you requested on ${data.userData.date}.
+        If a response is needed we will try to email you back within 72 hours. Thank you for using YoDo!<br/><br/>
+        Here is a copy of your support ticket for your reference:<br/><br/>
+        <b>Name:</b> ${data.userData.name}<br/>
+        <b>Email:</b> ${data.userData.email}<br/>
+        <b>Date:</b> ${data.userData.date}<br/>
+        <b>Details:</b> ${data.userData.details}</p>`
+    });
+}
 
 client.connect((err) => {
     if (err) {
@@ -146,14 +179,21 @@ app.post("/checkReAuth", verifyToken, (req, res) => {
 })
 
 app.post('/supportUpload', (req, res) => {
-    upload(req, res, function (err) {
-        if(err instanceof multer.MulterError) {
-            return res.status(500).json(err);
-        } else if (err) {
-            return res.status(500).json(err);
-        }
-        return res.status(200).send(req.body.fileData);
-    })
+    supportEmailer(req.body);
+    res.json({
+        message: 'sent'
+    });
+    // upload(req, res, function (err) {
+    //     if(err instanceof multer.MulterError) {
+    //         return res.status(500).json(err);
+    //     } else if (err) {
+    //         return res.status(500).json(err);
+    //     }
+    //     return res.json({
+    //         data: req.body
+    //     })
+    // return res.status(200).send(req.body.fileData);
+    // });
 });
 
 // app.post('/changePassword', (req, res) => {
